@@ -32,6 +32,10 @@ models = []
 
 next_pipe_x = -1
 next_pipe_hole_y = -1
+
+next_pipe_x = -1
+next_pipe_hole_y = -1
+
 generation = 1
 
 
@@ -93,7 +97,7 @@ class Player():
         self.fitness = 0
         self.index = 0
 
-    def predict_action(self, next_pipe_x, next_pipe_hole_y):
+    def predict_action(self, next_pipe_x, next_pipe_hole_y, next2_pipe_x, next2_pipe_hole_y):
         n_pipe_x = next_pipe_x / MAX_PIPE_X
         n_player_y = self.Y/BASEY
 
@@ -107,7 +111,8 @@ class Player():
         for i in range(len(inputs)):
             if inputs[i] > 1:
                 print("WARNING!!!!!!!!!!!!!! UNNORMALIZED VAR {0}".format(i))
-        r = self.net.evaluate(inputs)[0]
+        #r = self.net.evaluate(inputs)[0]
+        r = self.net.evaluate([self.VelY, next_pipe_x, self.Y - next_pipe_hole_y])[0] #, next2_pipe_x, next2_pipe_hole_y
         return  1 if r > 0.5 else 0
 
     def checkCrash(self, upperPipes, lowerPipes, playerIndex):
@@ -139,7 +144,7 @@ class Player():
             lCollide = pixelCollision(playerRect, lPipeRect, pHitMask, lHitmask)
 
             if uCollide or lCollide:
-                self.fitness += 20/(self.Y - next_pipe_hole_y) if next_pipe_hole_y < self.Y and self.Y != next_pipe_hole_y else 20/(self.Y - next_pipe_hole_y + 0.1)
+                #self.fitness += 20/(self.Y - next_pipe_hole_y) if next_pipe_hole_y < self.Y and self.Y != next_pipe_hole_y else 20/(self.Y - next_pipe_hole_y + 0.1)
                 return True
         return False
 
@@ -249,13 +254,13 @@ def mainGame(movementInfo):
     # list of upper pipes
     upperPipes = [
         {'x': SCREENWIDTH + 10, 'y': newPipe1[0]['y']},
-        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 1.5), 'y': newPipe2[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
         {'x': SCREENWIDTH + 10, 'y': newPipe1[1]['y']},
-        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 1.5), 'y': newPipe2[1]['y']},
     ]
 
     global next_pipe_x
@@ -263,6 +268,11 @@ def mainGame(movementInfo):
 
     next_pipe_x = lowerPipes[0]['x']
     next_pipe_hole_y = (lowerPipes[0]['y'] + (upperPipes[0]['y'] + IMAGES['pipe'][0].get_height()))/2
+
+    global next2_pipe_x
+    global next2_pipe_hole_y
+    next2_pipe_x = lowerPipes[1]['x']
+    next2_pipe_hole_y = (lowerPipes[1]['y'] + (upperPipes[1]['y'] + IMAGES['pipe'][1].get_height()))/2
 
     pipeVelX = -4
 
@@ -288,7 +298,7 @@ def mainGame(movementInfo):
 
         for p in models:
             if p.State == True:
-                if p.predict_action(next_pipe_x, next_pipe_hole_y) == 1:
+                if p.predict_action(next_pipe_x, next_pipe_hole_y, next2_pipe_x, next2_pipe_hole_y) == 1:
                     if p.Y > -2 * IMAGES['player'][0].get_height():
                         p.VelY = p.FlapAcc
                         p.Flapped = True
@@ -375,13 +385,6 @@ def mainGame(movementInfo):
                 SCREEN.blit(IMAGES['player'][playerIndex], (p.X, p.Y))
 
         pygame.draw.line(SCREEN, (255, 0, 0), (0, int(next_pipe_hole_y)), (SCREENWIDTH, int(next_pipe_hole_y)))
-        #for p in models:
-        #    pygame.draw.line(SCREEN, (0, 0, 255), (0, int(p.Y)), (SCREENWIDTH, int(p.Y)))
-        # a = (int(BASEY * 0.2) + 0.5*PIPEGAPSIZE)
-        # b = MAX_PIPE_HOLE_Y + (int(BASEY * 0.2) + 0.5*PIPEGAPSIZE)
-        # pygame.draw.line(SCREEN, (255, 255, 0), (0, int(a)), (SCREENWIDTH, int(a)))
-
-        # pygame.draw.line(SCREEN, (255, 255, 0), (0, int(b)), (SCREENWIDTH, int(b)))
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -436,7 +439,7 @@ def getRandomPipe():
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
     pipeHeight = IMAGES['pipe'][0].get_height()
-    pipeX = MAX_PIPE_X
+    pipeX = SCREENWIDTH + 96# MAX_PIPE_X #+ (SCREENWIDTH * 0.5)
 
     return [
         {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
