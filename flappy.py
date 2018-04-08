@@ -254,13 +254,13 @@ def mainGame(movementInfo):
     # list of upper pipes
     upperPipes = [
         {'x': SCREENWIDTH + 10, 'y': newPipe1[0]['y']},
-        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 1.5), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
         {'x': SCREENWIDTH + 10, 'y': newPipe1[1]['y']},
-        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 1.5), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
     ]
 
     global next_pipe_x
@@ -318,11 +318,16 @@ def mainGame(movementInfo):
 
 
         has_added_score = False
+        x = upperPipes[0]['x']# + IMAGES['pipe'][0].get_width()/2
+        y = 0
+        z = 0
         # check for score
         for p in models:
             if p.State == True:
                 pipe_idx = 0
-                playerMidPos = p.X
+                playerMidPos = p.X + IMAGES['player'][playerIndex].get_width()/2
+                y = playerMidPos
+                z = p.Y
                 for pipe in upperPipes:
                     pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width()
                     if pipeMidPos <= playerMidPos < pipeMidPos + 4:
@@ -385,6 +390,9 @@ def mainGame(movementInfo):
                 SCREEN.blit(IMAGES['player'][playerIndex], (p.X, p.Y))
 
         pygame.draw.line(SCREEN, (255, 0, 0), (0, int(next_pipe_hole_y)), (SCREENWIDTH, int(next_pipe_hole_y)))
+        pygame.draw.line(SCREEN, (255, 0, 255), (x, 0), (x, SCREENHEIGHT))
+        pygame.draw.line(SCREEN, (255, 255, 0), (y, 0), (y, SCREENHEIGHT))
+        pygame.draw.line(SCREEN, (255, 255, 0), (0, z), (SCREENWIDTH, z))
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -439,7 +447,7 @@ def getRandomPipe():
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
     pipeHeight = IMAGES['pipe'][0].get_height()
-    pipeX = SCREENWIDTH + 96# MAX_PIPE_X #+ (SCREENWIDTH * 0.5)
+    pipeX = MAX_PIPE_X #SCREENWIDTH + 96# MAX_PIPE_X #+ (SCREENWIDTH * 0.5)
 
     return [
         {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
