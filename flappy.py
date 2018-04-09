@@ -22,8 +22,8 @@ PIPE_HOLE_OFFSET = (int(BASEY * 0.2) + 0.5*PIPEGAPSIZE)
 PIPE_HOLE_RANGE = int(BASEY * 0.6 - PIPEGAPSIZE)
 MAX_PIPE_X = SCREENWIDTH + 10
 #BASEY is used for normalizing p.Y
-# image, sound and hitmask  dicts
-IMAGES, SOUNDS, HITMASKS = {}, {}, {}
+# image and hitmask  dicts
+IMAGES, HITMASKS = {}, {}
 
 fitness = []
 total_models = 100
@@ -177,25 +177,10 @@ def main():
         pygame.image.load('assets/sprites/9.png').convert_alpha()
     )
 
-    # game over sprite
-    IMAGES['gameover'] = pygame.image.load('assets/sprites/gameover.png').convert_alpha()
-    # message sprite for welcome screen
-    IMAGES['message'] = pygame.image.load('assets/sprites/message.png').convert_alpha()
     # base (ground) sprite
     IMAGES['base'] = pygame.image.load('assets/sprites/base.png').convert_alpha()
 
-    # sounds
-    if 'win' in sys.platform:
-        soundExt = '.wav'
-    else:
-        soundExt = '.ogg'
-
-    SOUNDS['die']    = pygame.mixer.Sound('assets/audio/die' + soundExt)
-    SOUNDS['hit']    = pygame.mixer.Sound('assets/audio/hit' + soundExt)
-    SOUNDS['point']  = pygame.mixer.Sound('assets/audio/point' + soundExt)
-    SOUNDS['swoosh'] = pygame.mixer.Sound('assets/audio/swoosh' + soundExt)
-    SOUNDS['wing']   = pygame.mixer.Sound('assets/audio/wing' + soundExt)
-
+    
     global models
     models = []
     for i in range(total_models):
@@ -391,7 +376,7 @@ def mainGame(movementInfo):
                 newPipe = getRandomPipe()
                 upperPipes.append(newPipe[0])
                 lowerPipes.append(newPipe[1])
-                
+
         # remove first pipe if its out of the screen
         if upperPipes[0]['x'] < -IMAGES['pipe'][0].get_width():
             upperPipes.pop(0)
@@ -433,9 +418,9 @@ def showGameOverScreen(): #crashInfo):
     for p in models:
         totalFitness += p.fitness
 
-    output = "{0},{1},{2}".format(generation, int(totalFitness), int(models[0].fitness))#, models[0].net)
+    output = "\n{0},{1},{2}".format(generation, int(totalFitness), int(models[0].fitness))#, models[0].net)
     writeToFile("generationSummary.csv", [output])
-    output = "Generation {0} fittest network:\n{1}".format(generation, models[0].net)
+    output = "\nGeneration {0} fittest network:\n{1}".format(generation, models[0].net)
     writeToFile("BestSpecies.txt", [output])
     new_nets = nn.breed(models[0].net, models[1].net, 15)
     new_nets.extend(nn.breed(models[1].net, models[0].net, 15))
@@ -462,7 +447,7 @@ def getRandomPipe():
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
     pipeHeight = IMAGES['pipe'][0].get_height()
-    pipeX = SCREENWIDTH * 1.5#MAX_PIPE_X + SCREENWIDTH/2 #SCREENWIDTH + 96# MAX_PIPE_X #+ (SCREENWIDTH * 0.5)
+    pipeX = SCREENWIDTH * 1.5
 
     return [
         {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
