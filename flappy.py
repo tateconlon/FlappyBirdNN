@@ -112,8 +112,16 @@ class Player():
             if inputs[i] > 1:
                 print("WARNING!!!!!!!!!!!!!! UNNORMALIZED VAR {0}".format(i))
         #r = self.net.evaluate(inputs)[0]
-        r = self.net.evaluate([self.VelY, next_pipe_x, self.Y - next_pipe_hole_y])[0] #, next2_pipe_x, next2_pipe_hole_y
+        r = self.net.evaluate([self.VelY, next_pipe_x, self.Y - next_pipe_hole_y, next2_pipe_x, self.Y - next_pipe_hole_y])[0] #, next2_pipe_x, next2_pipe_hole_y
         return  1 if r > 0.5 else 0
+
+    def debug_lines(self):
+        global next_pipe_x
+        global next_pipe_hole_y
+        pygame.draw.line(SCREEN, (255, 0, 255), (next_pipe_x, 0), (next_pipe_x, SCREENHEIGHT))
+        pygame.draw.line(SCREEN, (255, 0, 255), (0, self.Y), (SCREENWIDTH, self.Y))
+        pygame.draw.line(SCREEN, (255, 0, 0), (0, next_pipe_hole_y), (SCREENWIDTH, next_pipe_hole_y))
+
 
     def checkCrash(self, upperPipes, lowerPipes, playerIndex):
         """returns True if player collders with base or pipes."""
@@ -191,7 +199,7 @@ def main():
     global models
     models = []
     for i in range(total_models):
-        n = nn.neuralNetwork(3, 11, 1)
+        n = nn.neuralNetwork(5, 11, 1)
         models.append(Player(n))
 
     while True:
@@ -247,20 +255,23 @@ def mainGame(movementInfo):
     basex = movementInfo['basex']
     baseShift = IMAGES['base'].get_width() - IMAGES['background'].get_width()
 
-    # get 2 new pipes to add to upperPipes lowerPipes list
+    # get 3 new pipes to add to upperPipes lowerPipes list
     newPipe1 = getRandomPipe()
     newPipe2 = getRandomPipe()
+    newPipe3 = getRandomPipe()
 
     # list of upper pipes
     upperPipes = [
         {'x': SCREENWIDTH + 10, 'y': newPipe1[0]['y']},
         {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 2), 'y': newPipe2[0]['y']},
+        {'x': SCREENWIDTH + 10 + (SCREENWIDTH), 'y': newPipe3[0]['y']},
     ]
 
     # list of lowerpipe
     lowerPipes = [
         {'x': SCREENWIDTH + 10, 'y': newPipe1[1]['y']},
         {'x': SCREENWIDTH + 10 + (SCREENWIDTH / 2), 'y': newPipe2[1]['y']},
+        {'x': SCREENWIDTH + 10 + (SCREENWIDTH), 'y': newPipe3[1]['y']},
     ]
 
     global next_pipe_x
@@ -283,62 +294,75 @@ def mainGame(movementInfo):
     alive_players = len(models)
 
     while True:
+
+        #Kill all players that hit ceiling
         for p in models:
             if p.Y < 0 and p.State == True:
                 alive_players -= 1
                 p.State = False
 
-        if alive_players == 0:
-            return #{'y': 0, 'groundCrash': True, 'basex': basex, 'upperPipes': upperPipes, 'lowerPipes': lowerPipes, 'score': score, 'playerVelY': 0,}
-        
+        #Check if collided with pipes collisions
+        for p in models:
+            if p.State == True:
+                if p.checkCrash(upperPipes, lowerPipes, playerIndex):
+                    alive_players -= 1
+                    p.State = False
+
+        #if less than one model alive, stop game
+        #if one model is alive, add 10000 to fitness so it is known to have
+        #greatest fitness (instead of waiting until it dies - takes too long)
+        if alive_players <= 1:
+            for p in models:
+                if p.State:
+                    p.fitness += 10000
+            return 
+
+        #If model is alive this frame, add 1 to fitness
         for p in models:
             if p.State == True:
                 p.fitness += 1
-        next_pipe_x += pipeVelX
 
+        #Advance pipes for prediction
+        next_pipe_x += pipeVelX
+        next2_pipe_x += pipeVelX
+
+        #If model's neural net says to flap, flap
         for p in models:
             if p.State == True:
                 if p.predict_action(next_pipe_x, next_pipe_hole_y, next2_pipe_x, next2_pipe_hole_y) == 1:
                     if p.Y > -2 * IMAGES['player'][0].get_height():
                         p.VelY = p.FlapAcc
                         p.Flapped = True
-                        #SOUNDS['wing'].play()
+
+        #If quitting, - quit
         for event in pygame.event.get():
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
 
-        for p in models:
-            if p.State == True:
-                if p.checkCrash(upperPipes, lowerPipes, playerIndex):
-                    alive_players -= 1
-                    p.State = False
-        if alive_players == 0:
-            return #{'y': playery,'groundCrash': True,'basex': basex,'upperPipes': upperPipes,'lowerPipes': lowerPipes,'score': score,'playerVelY': 0,}
-
-
         has_added_score = False
-        x = upperPipes[0]['x']# + IMAGES['pipe'][0].get_width()/2
-        y = 0
-        z = 0
-        # check for score
+        # check if crossed pipe
         for p in models:
             if p.State == True:
                 pipe_idx = 0
                 playerMidPos = p.X + IMAGES['player'][playerIndex].get_width()/2
-                y = playerMidPos
-                z = p.Y
                 for pipe in upperPipes:
                     pipeMidPos = pipe['x'] + IMAGES['pipe'][0].get_width()
+                    #Passes through pipe
                     if pipeMidPos <= playerMidPos < pipeMidPos + 4:
+                        #Add to fitness score
                         p.fitness += 25 
                         p.fitness += 50/(p.Y - next_pipe_hole_y) if next_pipe_hole_y < p.Y and p.Y != next_pipe_hole_y else 50/(p.Y - next_pipe_hole_y + 0.1)
+                        
+                        #get next pipe values
                         next_pipe_x = lowerPipes[pipe_idx+1]['x']
                         next_pipe_hole_y = (lowerPipes[pipe_idx+1]['y'] + (upperPipes[pipe_idx+1]['y'] + IMAGES['pipe'][pipe_idx+1].get_height())) / 2
+                        next2_pipe_x = lowerPipes[pipe_idx+2]['x']
+                        next2_pipe_hole_y = (lowerPipes[pipe_idx+2]['y'] + (upperPipes[pipe_idx+2]['y'] + IMAGES['pipe'][pipe_idx+1].get_height())) / 2
+                        
                         if not has_added_score:
                             score += 1
                             has_added_score = True
-                        # SOUNDS['point'].play()
                     pipe_idx += 1
 
         # playerIndex basex change
@@ -364,10 +388,10 @@ def mainGame(movementInfo):
 
         # add new pipe when first pipe is about to touch left of screen
         if 0 < upperPipes[0]['x'] < 5:
-            newPipe = getRandomPipe()
-            upperPipes.append(newPipe[0])
-            lowerPipes.append(newPipe[1])
-
+                newPipe = getRandomPipe()
+                upperPipes.append(newPipe[0])
+                lowerPipes.append(newPipe[1])
+                
         # remove first pipe if its out of the screen
         if upperPipes[0]['x'] < -IMAGES['pipe'][0].get_width():
             upperPipes.pop(0)
@@ -381,18 +405,19 @@ def mainGame(movementInfo):
             SCREEN.blit(IMAGES['pipe'][1], (lPipe['x'], lPipe['y']))
 
         SCREEN.blit(IMAGES['base'], (basex, BASEY))
-        # print score so player overlaps the score
         showScore(score)
         showGeneration(generation)
         showAlive(alive_players)
+
         for p in models:
             if p.State == True:
                 SCREEN.blit(IMAGES['player'][playerIndex], (p.X, p.Y))
 
-        pygame.draw.line(SCREEN, (255, 0, 0), (0, int(next_pipe_hole_y)), (SCREENWIDTH, int(next_pipe_hole_y)))
-        pygame.draw.line(SCREEN, (255, 0, 255), (x, 0), (x, SCREENHEIGHT))
-        pygame.draw.line(SCREEN, (255, 255, 0), (y, 0), (y, SCREENHEIGHT))
-        pygame.draw.line(SCREEN, (255, 255, 0), (0, z), (SCREENWIDTH, z))
+        #Draw debug lines 
+        for p in models:
+            if p.State:
+                p.debug_lines()
+
         pygame.display.update()
         FPSCLOCK.tick(FPS)
 
@@ -404,9 +429,14 @@ def showGameOverScreen(): #crashInfo):
     global generation
     models.sort(key= lambda x: x.fitness, reverse=True)
 
-    print("---- Generation {0} Best | Fitness {1} ---".format(generation, models[0].fitness))
-    print(models[0].net.wih)
-    print(models[0].net.who)
+    totalFitness = -10000
+    for p in models:
+        totalFitness += p.fitness
+
+    output = "{0},{1},{2}".format(generation, int(totalFitness), int(models[0].fitness))#, models[0].net)
+    writeToFile("generationSummary.csv", [output])
+    output = "Generation {0} fittest network:\n{1}".format(generation, models[0].net)
+    writeToFile("BestSpecies.txt", [output])
     new_nets = nn.breed(models[0].net, models[1].net, 15)
     new_nets.extend(nn.breed(models[1].net, models[0].net, 15))
     new_nets.extend(nn.breed(models[1].net, models[2].net, 7))
@@ -421,21 +451,6 @@ def showGameOverScreen(): #crashInfo):
     models = []
     for i in range(len(new_nets)):
         models.append(Player(new_nets[i]))
-    #     idx1 = -1
-    #     idx2 = -1
-    #     for idxx in range(total_models):
-    #         if fitness[idxx] >= parent1:
-    #             idx1 = idxx
-    #             break
-    #     for idxx in range(total_models):
-    #         if fitness[idxx] >= parent2:
-    #             idx2 = idxx
-    #             break
-    #     new_weights1 = model_crossover(idx1, idx2)
-    #     updated_weights1 = model_mutate(new_weights1[0])
-    #     updated_weights2 = model_mutate(new_weights1[1])
-    #     new_weights.append(updated_weights1)
-    #     new_weights.append(updated_weights2)
     generation = generation + 1
     return
 
@@ -447,7 +462,7 @@ def getRandomPipe():
     gapY = random.randrange(0, int(BASEY * 0.6 - PIPEGAPSIZE))
     gapY += int(BASEY * 0.2)
     pipeHeight = IMAGES['pipe'][0].get_height()
-    pipeX = MAX_PIPE_X #SCREENWIDTH + 96# MAX_PIPE_X #+ (SCREENWIDTH * 0.5)
+    pipeX = SCREENWIDTH * 1.5#MAX_PIPE_X + SCREENWIDTH/2 #SCREENWIDTH + 96# MAX_PIPE_X #+ (SCREENWIDTH * 0.5)
 
     return [
         {'x': pipeX, 'y': gapY - pipeHeight},  # upper pipe
@@ -522,6 +537,10 @@ def getHitmask(image):
         for y in range(image.get_height()):
             mask[x].append(bool(image.get_at((x,y))[3]))
     return mask
+
+def writeToFile(filename, linesToWrite):
+    with open(filename, "a") as f:
+        f.writelines(linesToWrite)
 
 if __name__ == '__main__':
     main()

@@ -56,7 +56,7 @@ class neuralNetwork:
 		return temp_child
 
 	def __str__(self):
-		return str(self.wih) + "\n----------\n" + str(self.who)
+		return "'" + str(self.wih) + "|" + str(self.who) + "'"
 
 SWAP_CHANCE = 0.5
 
@@ -90,26 +90,3 @@ def mutate(net):
 	for i in range(len(net.who)):
 		if random.random() < MUTATE_CHANCE:
 			net.who[i] += random.uniform(MUTATE_PARAM*-1, MUTATE_PARAM)
-
-
-
-#TODO: Normalize Inputs
-
-
-#main function that gets executed
-def main():
-	num_inputs = 3
-	num_hidden_nodes = 11
-	num_output_nodes = 1
-
-	nets = []
-	for i in range(4):
-		net = neuralNetwork(num_inputs, num_hidden_nodes, num_output_nodes)
-		nets.append(net)
-
-	print(children)
-
-
-
-if __name__ == "__main__":
-	main()
