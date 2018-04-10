@@ -25,7 +25,6 @@ MAX_PIPE_X = SCREENWIDTH + 10
 # image and hitmask  dicts
 IMAGES, HITMASKS = {}, {}
 
-fitness = []
 total_models = 100
 
 models = []
@@ -98,21 +97,24 @@ class Player():
         self.index = 0
 
     def predict_action(self, next_pipe_x, next_pipe_hole_y, next2_pipe_x, next2_pipe_hole_y):
-        n_pipe_x = next_pipe_x / MAX_PIPE_X
-        n_player_y = self.Y/BASEY
+        # Normalized Variables that yielded poor performance
+        # n_pipe_x = next_pipe_x / MAX_PIPE_X
+        # n_player_y = self.Y/BASEY
+        # n_pipe_hole_y = (next_pipe_hole_y - PIPE_HOLE_OFFSET) / PIPE_HOLE_RANGE
+       
+        # normalized_inputs = [n_pipe_x, n_pipe_hole_y, n_player_y]
+        # for i in range(len(normalized_inputs)):
+        #     if normalized_inputs[i] > 1:
+        #         print("WARNING!!!!!!!!!!!!!! UNNORMALIZED VAR {0}".format(i))
 
+        inputs = []
+        inputs.append(self.VelY)
+        inputs.append(next_pipe_x)
+        inputs.append(self.Y-next_pipe_hole_y)
+        inputs.append(next2_pipe_x)
+        inputs.append(self.Y - next2_pipe_hole_y)
 
-        n_pipe_hole_y = (next_pipe_hole_y - PIPE_HOLE_OFFSET) / PIPE_HOLE_RANGE
-
-        a = n_pipe_hole_y*PIPE_HOLE_RANGE + PIPE_HOLE_OFFSET
-        pygame.draw.line(SCREEN, (255, 255, 0), (0, int(a)), (SCREENWIDTH, int(a)))
-
-        inputs = [n_pipe_x, n_pipe_hole_y, n_player_y]
-        for i in range(len(inputs)):
-            if inputs[i] > 1:
-                print("WARNING!!!!!!!!!!!!!! UNNORMALIZED VAR {0}".format(i))
-        #r = self.net.evaluate(inputs)[0]
-        r = self.net.evaluate([self.VelY, next_pipe_x, self.Y - next_pipe_hole_y, next2_pipe_x, self.Y - next_pipe_hole_y])[0] #, next2_pipe_x, next2_pipe_hole_y
+        r = self.net.evaluate([self.VelY, next_pipe_x, self.Y - next_pipe_hole_y, next2_pipe_x, self.Y - next2_pipe_hole_y])[0] #, next2_pipe_x, next2_pipe_hole_y
         return  1 if r > 0.5 else 0
 
     def debug_lines(self):
