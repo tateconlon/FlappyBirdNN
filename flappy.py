@@ -10,7 +10,7 @@ import numpy as np
 import neuralNetwork as nn
 
 
-FPS = 30
+FPS = 60
 SCREENWIDTH  = 288.0
 SCREENHEIGHT = 512.0
 # amount by which base can maximum shift to left
@@ -36,7 +36,7 @@ next_pipe_x = -1
 next_pipe_hole_y = -1
 
 generation = 1
-
+last_man_standing = False
 
 # list of all possible players (tuple of 3 positions of flap)
 PLAYERS_LIST = (
@@ -237,6 +237,7 @@ def showWelcomeAnimation():
 
 
 def mainGame(movementInfo):
+    global FPS, last_man_standing
     score = playerIndex = loopIter = 0
     playerIndexGen = movementInfo['playerIndexGen']
     basex = movementInfo['basex']
@@ -298,7 +299,7 @@ def mainGame(movementInfo):
         #if less than one model alive, stop game
         #if one model is alive, add 10000 to fitness so it is known to have
         #greatest fitness (instead of waiting until it dies - takes too long)
-        if alive_players <= 1:
+        if alive_players <= (0 if last_man_standing else 1):
             for p in models:
                 if p.State:
                     p.fitness += 10000
@@ -326,6 +327,10 @@ def mainGame(movementInfo):
             if event.type == QUIT or (event.type == KEYDOWN and event.key == K_ESCAPE):
                 pygame.quit()
                 sys.exit()
+            elif event.type == KEYDOWN and event.key == K_a:
+               FPS = 30 if FPS == 240 else 240
+            elif event.type == KEYDOWN and event.key == K_c:
+               last_man_standing = not last_man_standing
 
         has_added_score = False
         # check if crossed pipe
@@ -435,6 +440,7 @@ def showGameOverScreen(): #crashInfo):
         nn.mutate(n)
 
     new_nets.append(models[0].net.clone())
+    new_nets.append(models[1].net.clone())
     models = []
     for i in range(len(new_nets)):
         models.append(Player(new_nets[i]))
